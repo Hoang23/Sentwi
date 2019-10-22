@@ -10,21 +10,23 @@
     
     <div>
         <h1>Sentwi</h1> 
-        <h4>Ongoing Project</h4> 
+        <h4>Ongoing Project</h4>
         https://github.com/Hoang23/Sentwi
     </div>
     <br>
     <br>
     <br>
     <div>
-    Enter a hashtag for example - #Brexit<br>
+    Enter a hashtag<br>
      
-        <form action="/post_field" method="post">
-            <input name="hashtag">
-            <input type="submit">
+        <form action="/inputCalculation" method="GET"> 
+            <input name="hashtag" autofocus placeholder = "#pizza" type = "text">
+            <input type="submit", value = "Calculate">
         </form>
     <br>
-    <span>Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so. {{hashtag}}  </span>
+    <p> Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so.
+    
+    </p>
     </div>
     
     <div>{{graph}}</div>
@@ -40,7 +42,7 @@
     It uses NLTK's VADER, a lexicon rule-based approach that takes in consideration both polarity/sentiment through positive and negative words and its strength. 
     <br>
     Sentwi currently looks at the daily fluctuations from hashtags going back a week. <br>
-    Once I improve my UI skills, more features will be added on.
+
     </div>
 
 
