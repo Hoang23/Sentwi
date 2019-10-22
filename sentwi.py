@@ -1,7 +1,6 @@
-from flask import Flask, request, send_file
-from flask import Flask, render_template
+from flask import Flask, request, render_template, send_file
 import subprocess # show commandline output 
-from flask import jsonify
+from flask import jsonify # takes any data structure in python and converts it to valid json
 from flask import Response
 
 
@@ -9,6 +8,8 @@ from flask import Response
 import string
 import tweepy
 from tweepy import Cursor
+from tweepy import TweepError 
+
 import json
 import sys
 import pandas as pd 
@@ -27,6 +28,7 @@ import io
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+import time
 
 
 # construct twitter client
@@ -39,13 +41,20 @@ app = Flask(__name__)
 def home():
     return render_template('home.html')
 
+# get vs post
+# get - in flask, functions assume get requests unless explicitly stated
+# post - post to a database usually, also doesnt show in url and history
 
-#@app.route("/post_field", methods=["POST"])
+# # @app.route("/post_field", methods=["POST"]) use decorator if we want to see an output
 def input():
-    hashtag = request.form['hashtag']
+    # request.args.get for get request
+    # reqiest.forms.get for post reqiest
+    
+    
+    hashtag = request.args.get("hashtag")
     hashtag = str(hashtag)
 
-    #if hashtag 
+    
 
     checkStartWithHash = hashtag.startswith('#')
     if checkStartWithHash == True:
@@ -55,16 +64,36 @@ def input():
 
     return hashtag
 
+# @app.route("/", methods=["POST"])
+# def waitingScreen():
+#     hashtag = input()
+#     hashtag = f'Calculating sentiment for {hashtag}.'
+#     alert = "Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so."
+#     return render_template("home.html", hashtag = hashtag, alert = alert)
+
+
 def getTweets():
-
-    today = DT.date.today()
-    week_ago = today - DT.timedelta(days=7)
+        
+        today = DT.date.today()
+        week_ago = today - DT.timedelta(days=7)
+        count = 0
+        tweets = []
+        try:
+            for tweet in tweepy.Cursor(client.search,q= input() ,count=100, lang="en", since = week_ago).items():
+                tweets.append(tweet)
+                count = count + 1
+                if count == 1000:
+                    time.sleep(2)
+                    count = 0
+            
+        except:
+            pass
+        
+        finally:
+            return tweets
     
-    tweets = []
-    for tweet in tweepy.Cursor(client.search,q= input() ,count=100, lang="en", since = week_ago).items():
-        tweets.append(tweet)
 
-    return tweets
+
 
 
 # @app.route("/post_field", methods=["POST"]) # which ever output is being displayed to, put this decorator
@@ -73,11 +102,11 @@ def getTweets():
 #     tweets = input()
 #     return render_template('home.html', tweets = tweets)
 
-def displayAttributes():
-    tweets = getTweets()
-    hashtag = input()
+# def displayAttributes():
+#     #tweets = getTweets()
+#     hashtag = input()
 
-    return render_template("home.html", tweets = tweets, hashtag = hashtag)
+#     return render_template("home.html", hashtag = hashtag) # tweets = tweets,
 
 
 def vaderSentimentAnalysis(jsonTweets, bPrint, tweetProcessor):
@@ -157,8 +186,8 @@ def processAndVader():
     return lSentiment_vader
 
 
-
-@app.route("/post_field", methods=["POST"]) # @app.route("/post_field", methods=["POST"])
+#inputCalculation
+@app.route('/inputCalculation', methods=["GET"]) # @app.route("/post_field", methods=["POST"])
 def plot_png():
     fig = create_figure()
     output = io.BytesIO()
@@ -188,7 +217,7 @@ def create_figure():
     newSeries = series.resample('1D').sum()
     # this plots and shows the time series
     newSeries.plot()
-
+    plt.suptitle('Sentiment Analysis for ' + str(input()))
     plt.ylabel('Sentiment - Negative < 0 > Positive')
     plt.xlabel('Time')
     
@@ -214,4 +243,4 @@ def create_figure():
 
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
