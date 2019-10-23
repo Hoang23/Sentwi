@@ -10,6 +10,7 @@ import tweepy
 from tweepy import Cursor
 from tweepy import TweepError 
 
+import tempfile
 import json
 import sys
 import pandas as pd 
@@ -25,11 +26,13 @@ import twitterClient
 import TwitterProcessing
 import urllib.parse
 import io
+import time
+import base64
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
-import time
 
+# if you want the image to display in a page and not just by itself, - https://www.reddit.com/r/flask/comments/3uwv6a/af_how_do_i_use_flaskpython_to_create_and_display/
 
 # construct twitter client
 client = twitterClient.twitterClient()
@@ -41,11 +44,15 @@ app = Flask(__name__)
 def home():
     return render_template('home.html')
 
+
+
 # get vs post
 # get - in flask, functions assume get requests unless explicitly stated
 # post - post to a database usually, also doesnt show in url and history
 
 # # @app.route("/post_field", methods=["POST"]) use decorator if we want to see an output
+
+
 def input():
     # request.args.get for get request
     # reqiest.forms.get for post reqiest
@@ -186,18 +193,25 @@ def processAndVader():
     return lSentiment_vader
 
 
-#inputCalculation
-@app.route('/inputCalculation', methods=["GET"]) # @app.route("/post_field", methods=["POST"])
-def plot_png():
-    fig = create_figure()
-    output = io.BytesIO()
-    FigureCanvas(fig).print_png(output)
-    return Response(output.getvalue(), mimetype='image/png')
+# @app.route('/inputCalculation')
+# def graph():
+#     return render_template("result.html")
+
+
+# #inputCalculation
+# #@app.route('/inputCalculation', methods=["GET"])  or @app.route('/plot.png')
+# @app.route('/inputCalculation') #/inputCalculation
+# def plot_png():
+#     fig = create_figure()
+#     output = io.BytesIO()
+#     FigureCanvas(fig).print_png(output)
+#     #Response(output.getvalue(), mimetype='image/png')
+#     return Response(output.getvalue(), mimetype='image/png')
 
 
 
 
-
+@app.route('/inputCalculation', methods=["GET"])
 def create_figure():
     fig = Figure()
     series = pd.DataFrame(processAndVader(), columns=['date', 'sentiment'])
@@ -223,7 +237,39 @@ def create_figure():
     
     fig = plt.gcf() # get current figure
     #fig.savefig('fig1.png')
-    return fig
+    #return fig
+
+    f = tempfile.TemporaryFile()
+    plt.savefig(f)    
+    img64 = base64.b64encode(f.read()).decode('UTF-8')
+    f.close()
+    return render_template('home.html', image_data=img64) # 
+
+    #return fig
+
+
+
+
+# @app.route('/inputCalculation')
+# def graph():
+#     return render_template("result.html")
+
+
+
+
+# @app.route('/inputCalculation')
+# def result2():
+#     return render_template('result.html')
+
+
+
+
+
+
+
+
+
+
     # img = io.BytesIO()  # create the buffer
     # plt.savefig(img, format='png')  # save figure to the buffer
     # img.seek(0)  # rewind your buffer

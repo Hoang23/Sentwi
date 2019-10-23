@@ -1,11 +1,3 @@
-<!-- {% extends "layout.html" %}
-
-{% block content %}
-    <div>
-        <img src="/plot.png" alt = "my plot">
-    </div>
-{% endblock content %} -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -38,16 +30,11 @@
     </div>
     
     <div>
-        <img src="data:image/png;base64,{{ image_data }}">
+        <img src="data:image/png;base64,"{{ image_data }}>
     </div>
-    
     <br>
     <br>
     <br>
-
-
-
-
 
     <div>
     <h3>About</h3>
@@ -70,4 +57,3 @@
     
 </body>
 </html>
-
