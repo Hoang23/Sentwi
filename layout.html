@@ -19,19 +19,24 @@
     <div>
     Enter a hashtag<br>
      
-        <form action="/inputCalculation" method="GET"> 
+        <form action="/inputCalculation" method="POST"> 
             <input name="hashtag" autofocus placeholder = "#pizza" type = "text">
             <input type="submit", value = "Calculate">
         </form>
     <br>
-    <p> Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so.
-    
+    <p> 
+        Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so.
     </p>
     </div>
     
-    <div>
-        <img src="data:image/png;base64,"{{ image_data }}>
+    <div>{{name}}
+            <img src= '{{ graph }}' ></img>
     </div>
+    
+
+
+
+
     <br>
     <br>
     <br>

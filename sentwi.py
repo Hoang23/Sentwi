@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, send_file
+from flask import Flask, request, redirect, render_template, send_file
 import subprocess # show commandline output 
 from flask import jsonify # takes any data structure in python and converts it to valid json
 from flask import Response
@@ -14,6 +14,7 @@ import tempfile
 import json
 import sys
 import pandas as pd 
+import numpy as np
 import csv
 import datetime as DT
 import codecs
@@ -31,6 +32,12 @@ import base64
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+import os
+
+
+#os.chdir(sys.path[0]) # path[0], is the directory containing the script that was used to invoke the Python interpreter
+
+# https://pythonise.com/feed/flask/python-before-after-request
 
 # if you want the image to display in a page and not just by itself, - https://www.reddit.com/r/flask/comments/3uwv6a/af_how_do_i_use_flaskpython_to_create_and_display/
 
@@ -38,7 +45,17 @@ from matplotlib.figure import Figure
 client = twitterClient.twitterClient()
 
 
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(APP_ROOT, 'static', 'images')
+
+# Configure Flask app and the logo upload folder
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+
+
+
 
 @app.route('/')
 def home():
@@ -52,6 +69,7 @@ def home():
 
 # # @app.route("/post_field", methods=["POST"]) use decorator if we want to see an output
 
+#@app.route('/inputCalculation', methods=["POST"])
 
 def input():
     # request.args.get for get request
@@ -79,6 +97,11 @@ def input():
 #     return render_template("home.html", hashtag = hashtag, alert = alert)
 
 
+#app.config["IMAGE_UPLOADS"] = "/home/hoang-pc/Sync/Dropbox_insync/Files/Me/Programming/Python/Sentwi/Hosted/static/images"
+# Create two constant. They direct to the app root folder and logo upload folder
+
+
+
 def getTweets():
         
         today = DT.date.today()
@@ -86,17 +109,18 @@ def getTweets():
         count = 0
         tweets = []
         try:
-            for tweet in tweepy.Cursor(client.search,q= input() ,count=100, lang="en", since = week_ago).items():
+            for idx, tweet in enumerate(tweepy.Cursor(client.search,q= input() ,count=100, lang="en", since = week_ago).items()):
                 tweets.append(tweet)
                 count = count + 1
                 if count == 1000:
-                    time.sleep(2)
+                    time.sleep(0.2)
                     count = 0
             
         except:
             pass
         
         finally:
+            print(count)
             return tweets
     
 
@@ -193,13 +217,47 @@ def processAndVader():
     return lSentiment_vader
 
 
+def checkToday():
+    #lSentiment_vader 
+    
+    lSentiment_vader = processAndVader()
+
+    date_time = []
+    for i in lSentiment_vader:
+        date_time.append(i[0])
+        
+    today = DT.date.today()
+    one_day = today - DT.timedelta(days=1) 
+    one_day = one_day.day
+    two_day = today - DT.timedelta(days=2) 
+    two_day = two_day.day
+
+    allToday = []
+    for i in date_time:
+        if i.day == one_day or two_day:
+            allToday.append(True)
+        else:
+            allToday.append(False)
+            
+    dfAllToday = pd.DataFrame(allToday) 
+   
+    
+    for index, row in dfAllToday.iterrows():
+        if row[0] == False:
+            return False
+        
+    return True
+        
+         
+
+
 # @app.route('/inputCalculation')
 # def graph():
 #     return render_template("result.html")
 
 
-# #inputCalculation
-# #@app.route('/inputCalculation', methods=["GET"])  or @app.route('/plot.png')
+#inputCalculation
+#@app.route('/inputCalculation', methods=["GET"])  or @app.route('/plot.png')
 # @app.route('/inputCalculation') #/inputCalculation
 # def plot_png():
 #     fig = create_figure()
@@ -208,45 +266,66 @@ def processAndVader():
 #     #Response(output.getvalue(), mimetype='image/png')
 #     return Response(output.getvalue(), mimetype='image/png')
 
+def build_graph(x_coordinates, y_coordinates):
+    img = io.BytesIO()
+    plt.plot(x_coordinates, y_coordinates)
+    plt.savefig(img, format='png')
+    img.seek(0)
+    graph_url = base64.b64encode(img.getvalue()).decode()
+    plt.show()
+    plt.close()
+    return 'data:image/png;base64,{}'.format(graph_url)
 
 
-
-@app.route('/inputCalculation', methods=["GET"])
+@app.route('/inputCalculation', methods=["POST"]) # tihs belongs here
 def create_figure():
-    fig = Figure()
+
+      
+    today = checkToday()
+    if today == True:
+        time = "1H"
+    elif today == False:
+        time = "1D"
+
+
+    #fig = Figure()
     series = pd.DataFrame(processAndVader(), columns=['date', 'sentiment'])
+    series.date = pd.to_datetime(series.date, format='%Y-%m-%d %H:%M:%S', errors='ignore')
+    
+   
+    
+    
     # tell pandas that the date column is the one we use for indexing (or x-axis)
     series.set_index('date', inplace=True)
+    
+    #series.set_index(['date'])
+    #series.index = pd.to_datetime(series.index, unit='s')
+#data.index = pd.to_datetime(data.index, unit='s')
     # pandas makes a guess at the type of the columns, but to make sure it doesn't get it wrong, we set the sentiment
     # column to floats
     series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
-
-    # This step is not necessary, but pandas has a neat function that allows us to group the series at different
-    # resultion.  The 'how=' part tells it how to group the instances.  In this example, it sames we want to group
-    # by day, and add up all the sentiment scores for the same day and create a new time series called 'newSeries'
-    # with this day resolution
-    # play with this for different resolution, '1H' is by hour, '1M' is by minute etc 
+    newSeries = series.resample('1H').sum()
     
-    # Deprecated??: newSeries = series.resample('1D', how='sum') # default (1D) # 1M looks most informative? 1M is 1 month not minute??
-    newSeries = series.resample('1D').sum()
-    # this plots and shows the time series
-    newSeries.plot()
-    plt.suptitle('Sentiment Analysis for ' + str(input()))
-    plt.ylabel('Sentiment - Negative < 0 > Positive')
-    plt.xlabel('Time')
+    graph_url = build_graph(newSeries.index, newSeries.values)
+
+
+
+    # newSeries.plot()
+    # plt.suptitle('Sentiment Analysis')
+    # plt.ylabel('Sentiment - Negative < 0 > Positive')
+    # plt.xlabel('Time')
     
-    fig = plt.gcf() # get current figure
-    #fig.savefig('fig1.png')
-    #return fig
+    #fig = plt.gcf() # get current figure
+    
+    return render_template('home.html', name = 'new_plot', graph = graph_url)
 
-    f = tempfile.TemporaryFile()
-    plt.savefig(f)    
-    img64 = base64.b64encode(f.read()).decode('UTF-8')
-    f.close()
-    return render_template('home.html', image_data=img64) # 
+   
 
-    #return fig
-
+    # f = tempfile.TemporaryFile()
+    # plt.savefig(f)    
+    # img64 = base64.b64encode(f.read()).decode('UTF-8')
+    # f.close()
+    # return render_template('home.html', image_data=img64) # 
 
 
 
