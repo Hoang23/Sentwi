@@ -45,12 +45,13 @@ import os
 client = twitterClient.twitterClient()
 
 
-APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(APP_ROOT, 'static', 'images')
+# APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+# UPLOAD_FOLDER = os.path.join(APP_ROOT, 'static', 'images')
 
-# Configure Flask app and the logo upload folder
+
+# # Configure Flask app and the logo upload folder
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 
@@ -73,10 +74,10 @@ def home():
 
 def input():
     # request.args.get for get request
-    # reqiest.forms.get for post reqiest
+    # reqiest.form.get for post reqiest
     
     
-    hashtag = request.args.get("hashtag")
+    hashtag = request.form.get("hashtag")
     hashtag = str(hashtag)
 
     
@@ -108,19 +109,21 @@ def getTweets():
         week_ago = today - DT.timedelta(days=7)
         count = 0
         tweets = []
+        hashtag = input()
         try:
-            for idx, tweet in enumerate(tweepy.Cursor(client.search,q= input() ,count=100, lang="en", since = week_ago).items()):
+            for tweet in tweepy.Cursor(client.search,q= hashtag ,count=100, lang="en", since = week_ago).items():
                 tweets.append(tweet)
                 count = count + 1
                 if count == 1000:
                     time.sleep(0.2)
                     count = 0
+                
             
         except:
             pass
         
         finally:
-            print(count)
+          
             return tweets
     
 
@@ -234,9 +237,12 @@ def checkToday():
 
     allToday = []
     for i in date_time:
-        if i.day == one_day or two_day:
+        day = i.day
+        if day == one_day:
             allToday.append(True)
-        else:
+        elif day == two_day:
+            allToday.append(True)
+        elif day != one_day or two_day:
             allToday.append(False)
             
     dfAllToday = pd.DataFrame(allToday) 
@@ -247,7 +253,6 @@ def checkToday():
             return False
         
     return True
-        
          
 
 
@@ -266,13 +271,26 @@ def checkToday():
 #     #Response(output.getvalue(), mimetype='image/png')
 #     return Response(output.getvalue(), mimetype='image/png')
 
-def build_graph(x_coordinates, y_coordinates):
+# very good tutorial https://technovechno.com/creating-graphs-in-python-using-matplotlib-flask-framework-pythonanywhere/
+def build_graph(seriesName):
+
+    today = checkToday()
+    if today == True:
+        time2 = "Hourly"
+    elif today == False:
+        time2 = "Daily"
+
     img = io.BytesIO()
-    plt.plot(x_coordinates, y_coordinates)
+    plt.plot(seriesName)
+    plt.xticks(rotation=90)
+    plt.suptitle(time2 + ' Sentiment Analysis of ' + str(input()))
+    plt.ylabel('Sentiment - Negative < 0 > Positive')
+    plt.xlabel('Date/Time')
     plt.savefig(img, format='png')
     img.seek(0)
     graph_url = base64.b64encode(img.getvalue()).decode()
-    plt.show()
+    #plt.show()
+    
     plt.close()
     return 'data:image/png;base64,{}'.format(graph_url)
 
@@ -286,6 +304,7 @@ def create_figure():
         time = "1H"
     elif today == False:
         time = "1D"
+        
 
 
     #fig = Figure()
@@ -304,9 +323,9 @@ def create_figure():
     # pandas makes a guess at the type of the columns, but to make sure it doesn't get it wrong, we set the sentiment
     # column to floats
     series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
-    newSeries = series.resample('1H').sum()
+    newSeries = series.resample(time).sum()
     
-    graph_url = build_graph(newSeries.index, newSeries.values)
+    graph_url = build_graph(newSeries)
 
 
 
@@ -317,7 +336,7 @@ def create_figure():
     
     #fig = plt.gcf() # get current figure
     
-    return render_template('home.html', name = 'new_plot', graph = graph_url)
+    return render_template('home.html', graph = graph_url)
 
    
 
