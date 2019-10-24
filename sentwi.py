@@ -33,6 +33,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import os
+from pandas.plotting import register_matplotlib_converters
+
 
 
 #os.chdir(sys.path[0]) # path[0], is the directory containing the script that was used to invoke the Python interpreter
@@ -111,12 +113,14 @@ def getTweets():
         tweets = []
         hashtag = input()
         try:
-            for tweet in tweepy.Cursor(client.search,q= hashtag ,count=100, lang="en", since = week_ago).items():
+            for idx, tweet in enumerate(tweepy.Cursor(client.search,q= hashtag ,count=100, lang="en", since = week_ago).items()):
                 tweets.append(tweet)
                 count = count + 1
                 if count == 1000:
                     time.sleep(0.2)
                     count = 0
+                if idx > 10000:
+                    break
                 
             
         except:
@@ -216,11 +220,11 @@ def stopwords():
 def processAndVader():
     tweetProcessor_vader = TwitterProcessing.TwitterProcessing(TweetTokenizer(), stopwords())
     lSentiment_vader = []
-    lSentiment_vader = vaderSentimentAnalysis(getTweets(), True, tweetProcessor_vader)
+    lSentiment_vader = vaderSentimentAnalysis(getTweets(), False, tweetProcessor_vader)
     return lSentiment_vader
 
 
-def checkToday():
+def runVaderAndCheckToday():
     #lSentiment_vader 
     
     lSentiment_vader = processAndVader()
@@ -250,9 +254,9 @@ def checkToday():
     
     for index, row in dfAllToday.iterrows():
         if row[0] == False:
-            return False
+            return False, lSentiment_vader
         
-    return True
+    return True, lSentiment_vader
          
 
 
@@ -274,18 +278,39 @@ def checkToday():
 # very good tutorial https://technovechno.com/creating-graphs-in-python-using-matplotlib-flask-framework-pythonanywhere/
 def build_graph(seriesName):
 
-    today = checkToday()
+    today, lSentiment_vader = runVaderAndCheckToday()
     if today == True:
         time2 = "Hourly"
     elif today == False:
         time2 = "Daily"
+        
+
+    
+
+    # #plotting
+    # plt.style.use('fivethirtyeight')
+    # plt.plot(pos_signal, color='r')
+    # plt.plot(neg_signal, color='b')
+
+
 
     img = io.BytesIO()
-    plt.plot(seriesName)
+    #plt.plot(seriesName)
+    # https://stackoverflow.com/questions/31345489/pyplot-change-color-of-line-if-data-is-less-than-zero
+    pos_series = seriesName.copy()
+    neg_series = seriesName.copy()
+
+    pos_series[pos_series <= 0] = np.nan
+    neg_series[neg_series > 0] = np.nan
+
+    #plt.style.use('fivethirtyeight')
+    plt.plot(pos_series, color='b')
+    plt.plot(neg_series, color='r')
+
     plt.xticks(rotation=90)
     plt.suptitle(time2 + ' Sentiment Analysis of ' + str(input()))
     plt.ylabel('Sentiment - Negative < 0 > Positive')
-    plt.xlabel('Date/Time')
+    # xlabel doesnt work for some reason
     plt.savefig(img, format='png')
     img.seek(0)
     graph_url = base64.b64encode(img.getvalue()).decode()
@@ -298,8 +323,9 @@ def build_graph(seriesName):
 @app.route('/inputCalculation', methods=["POST"]) # tihs belongs here
 def create_figure():
 
-      
-    today = checkToday()
+    register_matplotlib_converters()
+    
+    today, lSentiment_vader = runVaderAndCheckToday()
     if today == True:
         time = "1H"
     elif today == False:
@@ -308,7 +334,7 @@ def create_figure():
 
 
     #fig = Figure()
-    series = pd.DataFrame(processAndVader(), columns=['date', 'sentiment'])
+    series = pd.DataFrame(lSentiment_vader, columns=['date', 'sentiment'])
     series.date = pd.to_datetime(series.date, format='%Y-%m-%d %H:%M:%S', errors='ignore')
     
    
@@ -325,8 +351,14 @@ def create_figure():
     series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
     newSeries = series.resample(time).sum()
     
+    
     graph_url = build_graph(newSeries)
 
+
+    if len(series) == 0:
+        Message = "No data collected, please try again later"
+    else: 
+        Message = " "
 
 
     # newSeries.plot()
@@ -336,7 +368,7 @@ def create_figure():
     
     #fig = plt.gcf() # get current figure
     
-    return render_template('home.html', graph = graph_url)
+    return render_template('home.html', Message = Message, graph = graph_url)
 
    
 
