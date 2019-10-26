@@ -116,10 +116,10 @@ def getTweets():
             for idx, tweet in enumerate(tweepy.Cursor(client.search,q= hashtag ,count=100, lang="en", since = week_ago).items()):
                 tweets.append(tweet)
                 count = count + 1
-                if count == 1000:
+                if count == 300:
                     time.sleep(0.2)
                     count = 0
-                if idx > 10000:
+                if idx > 1500:
                     break
                 
             
@@ -232,31 +232,112 @@ def runVaderAndCheckToday():
     date_time = []
     for i in lSentiment_vader:
         date_time.append(i[0])
-        
-    today = DT.date.today()
-    one_day = today - DT.timedelta(days=1) 
+
+
+    import pytz, datetime
+    local = pytz.timezone ("Australia/Melbourne") # https://stackoverflow.com/questions/79797/how-to-convert-local-time-string-to-utc
+
+    today = DT.datetime.today()
+    print("today non utc is " + str(today))
+
+    today_naive = datetime.datetime.strptime (str(today), "%Y-%m-%d %H:%M:%S.%f")
+    today_local_dt = local.localize(today_naive, is_dst=None)
+    today_utc_dt = today_local_dt.astimezone(pytz.utc)
+
+    today = today_utc_dt.day
+    one_day = today_utc_dt - DT.timedelta(days=1)
     one_day = one_day.day
-    two_day = today - DT.timedelta(days=2) 
+    two_day = today_utc_dt - DT.timedelta(days=2)
     two_day = two_day.day
 
-    allToday = []
+    allTwoDays = []
     for i in date_time:
         day = i.day
-        if day == one_day:
-            allToday.append(True)
+        if day == today:
+            allTwoDays.append(True)
+        elif day == one_day:
+            allTwoDays.append(True)
         elif day == two_day:
-            allToday.append(True)
-        elif day != one_day or two_day:
-            allToday.append(False)
+            allTwoDays.append(True)
+        elif day != today or one_day or two_day:
+            allTwoDays.append(False)
             
-    dfAllToday = pd.DataFrame(allToday) 
+    dfallTwoDays = pd.DataFrame(allTwoDays) 
    
-    
-    for index, row in dfAllToday.iterrows():
+    for index, row in dfallTwoDays.iterrows():
         if row[0] == False:
-            return False, lSentiment_vader
+            allTwoDays = False
+        else:
+            allTwoDays = True
+
+
+
+    ### just added
+    
+    
+    # if all posts in the last 2 horurs
+    now = DT.datetime.today()
+    now_naive = datetime.datetime.strptime (str(now), "%Y-%m-%d %H:%M:%S.%f")
+    now_local_dt = local.localize(now_naive, is_dst=None)
+    now_utc_dt = now_local_dt.astimezone(pytz.utc)
+
+    this_hour = now_utc_dt
+    this_hour = this_hour.hour
+
+    one_hour = now_utc_dt - DT.timedelta(hours=1)
+    one_hour = one_hour.hour
+
+    two_hour = now_utc_dt - DT.timedelta(hours=2)
+    two_hour = two_hour.hour
+    
+    # one_hour_naive = datetime.datetime.strptime (str(one_hour), "%Y-%m-%d %H:%M:%S.%f")
+    # one_hour_naive_local_dt = local.localize(one_hour_naive, is_dst=None)
+    # one_hour_utc_dt = one_hour_naive_local_dt.astimezone(pytz.utc)
+    # one_hour_utc_dt = one_hour_utc_dt.hour
+    # one_hour_utc_dt
+
+    # two_hour_naive = datetime.datetime.strptime (str(two_hour), "%Y-%m-%d %H:%M:%S.%f")
+    # two_hour_naive_local_dt = local.localize(two_hour_naive, is_dst=None)
+    # two_hour_utc_dt = two_hour_naive_local_dt.astimezone(pytz.utc)
+    # two_hour_utc_dt = two_hour_utc_dt.hour
+    # two_hour_utc_dt
+    
+    # tweets from last few horus
+    allLastFewHours = []
+    for i in date_time:
+        day = i.day
+        hour = i.hour
+        if hour == this_hour and day == today: 
+            allLastFewHours.append(True)
+        elif hour == one_hour and day == today: 
+            allLastFewHours.append(True)
+        elif hour == two_hour and day == today:
+            allLastFewHours.append(True)
+        else:
+            allLastFewHours.append(False)
         
-    return True, lSentiment_vader
+    dfAllLastFewHours = pd.DataFrame(allLastFewHours) 
+
+    for index, row in dfAllLastFewHours.iterrows():
+        if row[0] == False:
+            allLastFewHours = False
+            break
+        else:
+            allLastFewHours = True
+    
+    print(date_time)
+    #print("one_day_utc_dt is " + str(one_day_utc_dt))
+    #print("one_hour_utc_dt is " + str(one_hour_utc_dt))
+    print("this_hour_utc " + str(this_hour))
+    print("one_hour_utc is " + str(one_hour))
+    #print("two_hour_utc_dt is " + str(two_hour_utc_dt))
+    print("two_hour_utc is " + str(two_hour))
+    print("today is " + str(today))
+    print("one day is " + str(one_day))
+
+    return allTwoDays, allLastFewHours, lSentiment_vader
+        
+
          
 
 
@@ -278,14 +359,22 @@ def runVaderAndCheckToday():
 # very good tutorial https://technovechno.com/creating-graphs-in-python-using-matplotlib-flask-framework-pythonanywhere/
 def build_graph(seriesName):
 
-    today, lSentiment_vader = runVaderAndCheckToday()
-    if today == True:
-        time2 = "Hourly"
+    today, lastFewHours, lSentiment_vader = runVaderAndCheckToday()
+    if today == True and lastFewHours == True:
+        time2 = "Minute Interval"
     elif today == False:
         time2 = "Daily"
+    elif today == True:
+        time2 = "Hourly"
+    # elif lastFewHours == True:
+    #     time2 = "10 Minute"
+    else:
+        time2 = "Error"
         
 
-    
+    # if lastFewHours == True:
+    #     time2 = "20 Minute Interval -"
+    print(lastFewHours)
 
     # #plotting
     # plt.style.use('fivethirtyeight')
@@ -300,16 +389,17 @@ def build_graph(seriesName):
     pos_series = seriesName.copy()
     neg_series = seriesName.copy()
 
-    pos_series[pos_series <= 0] = np.nan
+    pos_series[pos_series <= 0] = np.nan # pos_series[pos_series <= 0] = np.nan
     neg_series[neg_series > 0] = np.nan
 
     #plt.style.use('fivethirtyeight')
     plt.plot(pos_series, color='b')
     plt.plot(neg_series, color='r')
 
-    plt.xticks(rotation=90)
+    plt.xticks(rotation=30) #90
     plt.suptitle(time2 + ' Sentiment Analysis of ' + str(input()))
     plt.ylabel('Sentiment - Negative < 0 > Positive')
+    #plt.xlabel('Date Time')
     # xlabel doesnt work for some reason
     plt.savefig(img, format='png')
     img.seek(0)
@@ -325,11 +415,17 @@ def create_figure():
 
     register_matplotlib_converters()
     
-    today, lSentiment_vader = runVaderAndCheckToday()
-    if today == True:
-        time = "1H"
+    today, lastFewHours, lSentiment_vader = runVaderAndCheckToday()
+    # if today == True and lastFewHours == True:
+    #     time = "1Min"
+    if today == True and lastFewHours == True:
+        time = "1Min"
     elif today == False:
         time = "1D"
+    elif today == True:
+        time = "1H"
+    
+
         
 
 
