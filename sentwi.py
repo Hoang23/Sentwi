@@ -121,7 +121,7 @@ def getTweets():
                 if count == 500:
                     time.sleep(0.2)
                     count = 0
-                if idx > 200: #2500 sems like a good number
+                if idx > 2500: #2500 sems like a good number
                     break
                 
             
@@ -170,14 +170,19 @@ def vaderSentimentAnalysis(jsonTweets, bPrint, tweetProcessor):
     tweetURLs = []
     tokensl = []
     dSentimentScoresl = []
+
     for tweet in jsonTweets:
         try:
             tweetText = tweet.text
             tweetDate = tweet.created_at
-            try:
-                tweetURLs.append(tweet.entities.get('urls')[0].get('expanded_url')) 
-            except IndexError:
-                tweetURLs.append(None)
+
+            tweet_id = tweet.id_str
+            tweet_screen_name = tweet.user.screen_name
+            tweetURLs.append("https://twitter.com/" + str(tweet_screen_name) + "/status/" + tweet_id)
+    
+
+
+            
            
             # pre-process the tweet text
             lTokens = tweetProcessor.process(tweetText)
@@ -226,18 +231,19 @@ def vaderSentimentAnalysis(jsonTweets, bPrint, tweetProcessor):
     # print(dSentimentScoresl)
 
     output = list(zip(tokensl, dSentimentScoresl, tweetURLs))
-    #print(output)
 
     outputString = ""
     for i in output:
         outputString = outputString + ("\n" * 3) + str(i) + ("\n" * 10)
 
-    print(outputString)
-    print(len(tweetURLs))
-    print(len(tokensl))
-    print(len(dSentimentScoresl))
+    # print(output[0][0])    
 
-    return lSentiment_vader, outputString
+    # #print(outputString)
+    # print(len(tweetURLs))
+    # print(len(tokensl))
+    # print(len(dSentimentScoresl))
+
+    return lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output
 
 
 def stopwords():
@@ -265,14 +271,14 @@ def stopwords():
 def processAndVader():
     tweetProcessor_vader = TwitterProcessing.TwitterProcessing(TweetTokenizer(), stopwords())
     lSentiment_vader = []
-    lSentiment_vader, outputString = vaderSentimentAnalysis(getTweets(), False, tweetProcessor_vader)
-    return lSentiment_vader, outputString
+    lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = vaderSentimentAnalysis(getTweets(), False, tweetProcessor_vader)
+    return lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output
 
 
 def runVaderAndCheckToday():
     #lSentiment_vader 
     
-    lSentiment_vader, outputString = processAndVader()
+    lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = processAndVader()
 
     date_time = []
     for i in lSentiment_vader:
@@ -380,7 +386,7 @@ def runVaderAndCheckToday():
     # print("today is " + str(today))
     # print("one day is " + str(one_day))
 
-    return allTwoDays, allLastFewHours, lSentiment_vader, outputString
+    return allTwoDays, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output
         
 
          
@@ -460,7 +466,7 @@ def create_figure():
 
     register_matplotlib_converters()
     
-    today, allLastFewHours, lSentiment_vader, outputString = runVaderAndCheckToday()
+    today, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = runVaderAndCheckToday()
     
     # if today == True and lastFewHours == True:
     #     time = "1Min"
@@ -514,7 +520,7 @@ def create_figure():
     
     #fig = plt.gcf() # get current figure
     
-    return render_template('home.html', Message = Message, graph = graph_url, outputString = outputString)
+    return render_template('result.html', Message = Message, graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output)
 
    
 
@@ -565,4 +571,4 @@ def create_figure():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

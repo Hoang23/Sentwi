@@ -4,59 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>Sentwi</title> 
+    <link rel="stylesheet" href="{{url_for('static', filename='css/main.css') }}">
+
 </head>
 <body>
-    
-    <div class = "Intro">
-        <h1>Sentwi</h1> 
-        <h4>Ongoing Project</h4>
-        https://github.com/Hoang23/Sentwi
-    </div>
-    <br>
-    <br>
-    <br>
-    <div class = "Main">
-    Enter a hashtag<br>
-     
-        <form action="/inputCalculation" method="POST"> 
-            <input name="hashtag" autofocus placeholder = "#pizza" type = "text">
-            <input type="submit", value = "Calculate">
-        </form>
-    <br>
-    <p> 
-        Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so.
-    </p>
-    </div>
-    
-    <span>{{Message}}</span>
-    <div>
-            <img src= '{{ graph }}' ></img>
-    </div>
-    
-
-
-
-
-    <br>
-    <br>
-    <br>
-
-    <div>
-    <h3>About</h3>
-    Looking to get informed on the sentiment of a particular topic? <br>
-    Sentwi filters tweets by hashtags to computationally discover the trending sentiment of a topic using Natural Language Processing. <br>
-    It uses NLTK's VADER, a lexicon rule-based approach that takes in consideration both polarity/sentiment through positive and negative words and its strength. 
-    </div>
-
-
-    
-    
-    <br>
-    <br>
-    
-
-    
-    
+    {% block body %}  {% endblock %}
 </body>
 </html>
