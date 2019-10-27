@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template, send_file
+from flask import Flask, request, redirect, render_template, send_file, url_for
 import subprocess # show commandline output 
 from flask import jsonify # takes any data structure in python and converts it to valid json
 from flask import Response
@@ -109,17 +109,19 @@ def getTweets():
         
         today = DT.date.today()
         week_ago = today - DT.timedelta(days=7)
+        #month_ago = today - DT.timedelta(days=30)
+
         count = 0
         tweets = []
         hashtag = input()
         try:
-            for idx, tweet in enumerate(tweepy.Cursor(client.search,q= hashtag ,count=100, lang="en", since = week_ago).items()):
+            for idx, tweet in enumerate(tweepy.Cursor(client.search,q= hashtag ,count=100, lang="en").items()): # lang="en", since = week_ago).items()):
                 tweets.append(tweet)
                 count = count + 1
-                if count == 300:
+                if count == 500:
                     time.sleep(0.2)
                     count = 0
-                if idx > 1500:
+                if idx > 200: #2500 sems like a good number
                     break
                 
             
@@ -164,11 +166,18 @@ def vaderSentimentAnalysis(jsonTweets, bPrint, tweetProcessor):
 
     lSentiment_vader = []
     # open file and process tweets, one by one
+
+    tweetURLs = []
+    tokensl = []
+    dSentimentScoresl = []
     for tweet in jsonTweets:
         try:
             tweetText = tweet.text
             tweetDate = tweet.created_at
-
+            try:
+                tweetURLs.append(tweet.entities.get('urls')[0].get('expanded_url')) 
+            except IndexError:
+                tweetURLs.append(None)
            
             # pre-process the tweet text
             lTokens = tweetProcessor.process(tweetText)
@@ -182,17 +191,53 @@ def vaderSentimentAnalysis(jsonTweets, bPrint, tweetProcessor):
 
             # if we are printing, we print the tokens then the sentiment scores.  Because we don't have the list
             # of positive and negative words, we cannot use colorama to label each token
-            if bPrint:
-                print(*lTokens, sep=', ')
-                for cat,score in dSentimentScores.items():
-                    print('{0}: {1}, '.format(cat, score), end='')
-                print()
+            
+            # tokens = []
+            # for i in lTokens:
+            #     tokens.append(i)
 
+            # output = list(zip(tokens, tweetURLs))
+            # #print(output)
+            
+            # for cat,score in dSentimentScores.items():
+            #     output2 = str(cat) + ": " + str(score)
+            
+            # output3 = list(zip(output, output2))
+            #print(output)
+            #print(dSentimentScores)
+            
+        
+            
+           # print(len(tweetURLs))
+            # if bPrint:
+            #     print(*lTokens, sep=', ')
+            #     for cat,score in dSentimentScores.items():
+            #         print('{0}: {1}, '.format(cat, score), end='')
+            #     print()
+
+            # grab data
+            tokensl.append(lTokens)
+            dSentimentScoresl.append(dSentimentScores)
+          
         except KeyError as e:
             pass
+    # print(tweetURLs)
+    # print(tokensl)
+    # print(dSentimentScoresl)
 
+    output = list(zip(tokensl, dSentimentScoresl, tweetURLs))
+    #print(output)
 
-    return lSentiment_vader
+    outputString = ""
+    for i in output:
+        outputString = outputString + ("\n" * 3) + str(i) + ("\n" * 10)
+
+    print(outputString)
+    print(len(tweetURLs))
+    print(len(tokensl))
+    print(len(dSentimentScoresl))
+
+    return lSentiment_vader, outputString
 
 
 def stopwords():
@@ -220,14 +265,14 @@ def stopwords():
 def processAndVader():
     tweetProcessor_vader = TwitterProcessing.TwitterProcessing(TweetTokenizer(), stopwords())
     lSentiment_vader = []
-    lSentiment_vader = vaderSentimentAnalysis(getTweets(), False, tweetProcessor_vader)
-    return lSentiment_vader
+    lSentiment_vader, outputString = vaderSentimentAnalysis(getTweets(), False, tweetProcessor_vader)
+    return lSentiment_vader, outputString
 
 
 def runVaderAndCheckToday():
     #lSentiment_vader 
     
-    lSentiment_vader = processAndVader()
+    lSentiment_vader, outputString = processAndVader()
 
     date_time = []
     for i in lSentiment_vader:
@@ -238,7 +283,7 @@ def runVaderAndCheckToday():
     local = pytz.timezone ("Australia/Melbourne") # https://stackoverflow.com/questions/79797/how-to-convert-local-time-string-to-utc
 
     today = DT.datetime.today()
-    print("today non utc is " + str(today))
+    #print("today non utc is " + str(today))
 
     today_naive = datetime.datetime.strptime (str(today), "%Y-%m-%d %H:%M:%S.%f")
     today_local_dt = local.localize(today_naive, is_dst=None)
@@ -325,17 +370,17 @@ def runVaderAndCheckToday():
         else:
             allLastFewHours = True
     
-    print(date_time)
-    #print("one_day_utc_dt is " + str(one_day_utc_dt))
-    #print("one_hour_utc_dt is " + str(one_hour_utc_dt))
-    print("this_hour_utc " + str(this_hour))
-    print("one_hour_utc is " + str(one_hour))
-    #print("two_hour_utc_dt is " + str(two_hour_utc_dt))
-    print("two_hour_utc is " + str(two_hour))
-    print("today is " + str(today))
-    print("one day is " + str(one_day))
+    # print(date_time)
+    # #print("one_day_utc_dt is " + str(one_day_utc_dt))
+    # #print("one_hour_utc_dt is " + str(one_hour_utc_dt))
+    # print("this_hour_utc " + str(this_hour))
+    # print("one_hour_utc is " + str(one_hour))
+    # #print("two_hour_utc_dt is " + str(two_hour_utc_dt))
+    # print("two_hour_utc is " + str(two_hour))
+    # print("today is " + str(today))
+    # print("one day is " + str(one_day))
 
-    return allTwoDays, allLastFewHours, lSentiment_vader
+    return allTwoDays, allLastFewHours, lSentiment_vader, outputString
         
 
          
@@ -359,23 +404,23 @@ def runVaderAndCheckToday():
 # very good tutorial https://technovechno.com/creating-graphs-in-python-using-matplotlib-flask-framework-pythonanywhere/
 def build_graph(seriesName):
 
-    today, lastFewHours, lSentiment_vader = runVaderAndCheckToday()
-    if today == True and lastFewHours == True:
-        time2 = "Minute Interval"
-    elif today == False:
-        time2 = "Daily"
-    elif today == True:
-        time2 = "Hourly"
-    # elif lastFewHours == True:
-    #     time2 = "10 Minute"
-    else:
-        time2 = "Error"
+    # today, lastFewHours, lSentiment_vader = runVaderAndCheckToday()
+    # if today == True and lastFewHours == True:
+    #     time2 = "5 Minute Interval"
+    # elif today == False:
+    #     time2 = "Daily"
+    # elif today == True:
+    #     time2 = "Hourly"
+    # # elif lastFewHours == True:
+    # #     time2 = "10 Minute"
+    # else:
+    #     time2 = "Error"
         
 
     # if lastFewHours == True:
     #     time2 = "20 Minute Interval -"
-    print(lastFewHours)
 
+    
     # #plotting
     # plt.style.use('fivethirtyeight')
     # plt.plot(pos_signal, color='r')
@@ -396,8 +441,8 @@ def build_graph(seriesName):
     plt.plot(pos_series, color='b')
     plt.plot(neg_series, color='r')
 
-    plt.xticks(rotation=30) #90
-    plt.suptitle(time2 + ' Sentiment Analysis of ' + str(input()))
+    plt.xticks(rotation=20) #90
+    plt.suptitle('Sentiment Analysis of ' + str(input()))
     plt.ylabel('Sentiment - Negative < 0 > Positive')
     #plt.xlabel('Date Time')
     # xlabel doesnt work for some reason
@@ -415,17 +460,18 @@ def create_figure():
 
     register_matplotlib_converters()
     
-    today, lastFewHours, lSentiment_vader = runVaderAndCheckToday()
+    today, allLastFewHours, lSentiment_vader, outputString = runVaderAndCheckToday()
+    
     # if today == True and lastFewHours == True:
     #     time = "1Min"
-    if today == True and lastFewHours == True:
-        time = "1Min"
+    if today == True and allLastFewHours == True:
+        time = "5Min"
     elif today == False:
         time = "1D"
     elif today == True:
         time = "1H"
     
-
+   
         
 
 
@@ -445,7 +491,11 @@ def create_figure():
     # pandas makes a guess at the type of the columns, but to make sure it doesn't get it wrong, we set the sentiment
     # column to floats
     series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
-    newSeries = series.resample(time).sum()
+
+    try:
+        newSeries = series.resample(time).sum()
+    except:
+        pass
     
     
     graph_url = build_graph(newSeries)
@@ -464,7 +514,7 @@ def create_figure():
     
     #fig = plt.gcf() # get current figure
     
-    return render_template('home.html', Message = Message, graph = graph_url)
+    return render_template('home.html', Message = Message, graph = graph_url, outputString = outputString)
 
    
 
