@@ -1,58 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
-</head>
-<body>
-    
-    <div>
+{% extends "layout.html" %}
+
+{% block body %}
+    <div class = "Intro">
         <h1>Sentwi</h1> 
-        <h4>Ongoing Project</h4>
+        <h4>Ongoing Development</h4>
         https://github.com/Hoang23/Sentwi
     </div>
-    <br>
-    <br>
-    <br>
-    <div>
-    Enter a hashtag<br>
-     
-        <form action="/inputCalculation" method="GET"> 
+            <br> <br> 
+
+    <div class = "Main">
+    Enter a hashtag
+        
+        
+        <form action="/inputCalculation" method="POST"> 
             <input name="hashtag" autofocus placeholder = "#pizza" type = "text">
             <input type="submit", value = "Calculate">
         </form>
-    <br>
-    <p> Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so.
-    
-    </p>
+        
+        <br>
+
+        <p> 
+            Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so.
+        </p>
     </div>
-    
-    <div>{{graph}}</div>
-    
-    <br>
-    <br>
+
+    <span>{{Message}}</span>
+
+
     <br>
 
-    <div>
+    <div class = "About">
     <h3>About</h3>
     Looking to get informed on the sentiment of a particular topic? <br>
     Sentwi filters tweets by hashtags to computationally discover the trending sentiment of a topic using Natural Language Processing. <br>
     It uses NLTK's VADER, a lexicon rule-based approach that takes in consideration both polarity/sentiment through positive and negative words and its strength. 
-    <br>
-    Sentwi currently looks at the daily fluctuations from hashtags going back a week. <br>
-
     </div>
 
 
-    
-    
-    <br>
-    <br>
-    
 
-    
-    
-</body>
-</html>
+{% endblock %}
