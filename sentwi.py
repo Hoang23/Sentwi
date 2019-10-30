@@ -189,8 +189,7 @@ def vaderSentimentAnalysis(jsonTweets, bPrint, tweetProcessor):
 
 
 def stopwords():
-    from nltk.corpus import stopwords
-
+    from nltk.corpus import stopwords # for some reason this doesnt work as a global import
     stop_words = set(stopwords.words('english'))
 
     #add words that aren't in the NLTK stopwords list
@@ -223,12 +222,12 @@ def runVaderAndCheckToday():
         date_time.append(i[0])
 
 
-    import pytz, datetime
+    import pytz
     local = pytz.timezone ("Australia/Melbourne") # https://stackoverflow.com/questions/79797/how-to-convert-local-time-string-to-utc
 
     today = DT.datetime.today()
 
-    today_naive = datetime.datetime.strptime (str(today), "%Y-%m-%d %H:%M:%S.%f")
+    today_naive = DT.datetime.strptime (str(today), "%Y-%m-%d %H:%M:%S.%f")
     today_local_dt = local.localize(today_naive, is_dst=None)
     today_utc_dt = today_local_dt.astimezone(pytz.utc)
 
@@ -261,7 +260,7 @@ def runVaderAndCheckToday():
     
     # if all posts in the last 2 horurs
     now = DT.datetime.today()
-    now_naive = datetime.datetime.strptime (str(now), "%Y-%m-%d %H:%M:%S.%f")
+    now_naive = DT.datetime.strptime (str(now), "%Y-%m-%d %H:%M:%S.%f")
     now_local_dt = local.localize(now_naive, is_dst=None)
     now_utc_dt = now_local_dt.astimezone(pytz.utc)
 
@@ -302,9 +301,11 @@ def runVaderAndCheckToday():
     return allTwoDays, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output
         
 def LDA():
+    from nltk.corpus import stopwords #global imports arent working?
+    from nltk.tokenize import TweetTokenizer # global imports arent working?
     # LDA parameters
     # number of topics to discover (default = 10)
-    topicNum = 4 # default = 10
+    topicNum = 6 # default = 10
     # maximum number of words to display per topic (default = 10)
     # Answer to Exercise 1 (change from 10 to 15)
     wordNumToDisplay = 15 # default was 15
@@ -379,9 +380,14 @@ def displayWordcloud(model, featureNames):
     # number of wordclouds for each column
     plotRowNum = int(math.ceil(topicNum / plotColNum))
 
+
+
     wordcloud_URLs = []
+    wordcloudURL = ""
     img = io.BytesIO()
     i = 1
+
+    # only the last graph beccause plt.close() is off
     for topicId, lTopicDist in enumerate(normalisedComponents):
         lWordProb = {featureNames[i] : wordProb for i,wordProb in enumerate(lTopicDist)}
         wordcloud = WordCloud(background_color='black')
@@ -393,21 +399,27 @@ def displayWordcloud(model, featureNames):
     #cloud = WordCloud().generate(text)
     
         #plt.savefig('image'+ str(i) +'.png')
+
+        img = io.BytesIO()
         plt.savefig(img, format='png') #png
         img.seek(0)
         # wordcloud_URLs.append(base64.b64encode(img.getvalue()).decode())    
-        wordcloud_URLs.append(base64.b64encode(img.getvalue()).decode())
-        plt.close()
+        #wordcloud_URLs.append(base64.b64encode(img.getvalue()).decode())
+        #wordcloud_URLs.append(base64.b64encode(img.read()).decode('ascii'))
+        imgURL = base64.b64encode(img.read()).decode('ascii')
+        wordcloudURL = 'data:img/png;base64,{}'.format(imgURL)
+        #plt.close()
         i = i + 1
+#
 
-
-    graph1 = 'data:image/png;base64,' + wordcloud_URLs[0]
-    graph2 = 'data:image/png;base64,' + wordcloud_URLs[1]
-    graph3 = 'data:image/png;base64,' + wordcloud_URLs[2]
-    graph4 = 'data:image/png;base64,' + wordcloud_URLs[3]
+    # graph1 = 'data:image/png;base64,' + wordcloud_URLs[0]
+    # graph2 = 'data:image/png;base64,' + wordcloud_URLs[1]
+    # graph3 = 'data:image/png;base64,' + wordcloud_URLs[2]
+    # graph4 = 'data:image/png;base64,' + wordcloud_URLs[3]
     
 
-    return graph1, graph2, graph3, graph4
+    # return graph1, graph2, graph3, graph4
+    return wordcloudURL
 
 
 # very good tutorial https://technovechno.com/creating-graphs-in-python-using-matplotlib-flask-framework-pythonanywhere/
@@ -426,7 +438,7 @@ def build_graph(seriesName):
     plt.plot(pos_series, color='b')
     plt.plot(neg_series, color='r')
 
-    plt.xticks(rotation=20) #90
+    plt.xticks(rotation=10) #90
     plt.suptitle('Sentiment Analysis of ' + str(input()))
     plt.ylabel('Sentiment - Negative < 0 > Positive')
     #plt.xlabel('Date Time')
@@ -443,59 +455,65 @@ def build_graph(seriesName):
 
 @app.route('/inputCalculation', methods=["POST"]) # tihs belongs here
 def create_figure():
+    import datetime as DT 
+    try:
+        register_matplotlib_converters()
+        
+        today, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = runVaderAndCheckToday()
+        
+        if today == True and allLastFewHours == True:
+            time = "5Min"
+        elif today == False:
+            time = "1D"
+        elif today == True:
+            time = "1H"
+        
+        # just to make sure a time is entered
+        else: 
+            time = "1D"
+        
+        series = pd.DataFrame(lSentiment_vader, columns=['date', 'sentiment'])
+        series.date = pd.to_datetime(series.date, format='%Y-%m-%d %H:%M:%S', errors='ignore')
+        
+        # tell pandas that the date column is the one we use for indexing (or x-axis)
+        series.set_index('date', inplace=True)
+        
 
-    register_matplotlib_converters()
+        series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
+
+        # try:
+        #     newSeries = series.resample(time).sum()
+        # except:
+        #     pass
+        
+        newSeries = series.resample(time).sum()
+        graph_url = build_graph(newSeries)
+
+
+        if len(series) == 0:
+            Message = "No data collected, please try again later"
+        else: 
+            Message = " "
+
+        # LDA words
+
+        ldaModel, tfFeatureNames = LDA()
+
+        topics, words = display_topics(ldaModel, tfFeatureNames, 10)
+
+        TopicModel = list(zip(topics, words))
+
+
+        # LDA wordcloud
+
+        # graph1, graph2, graph3, graph4 = displayWordcloud(ldaModel, tfFeatureNames)
+        WordCloudURL = displayWordcloud(ldaModel, tfFeatureNames)
+
+        return render_template('result.html', Message = Message, graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
     
-    today, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = runVaderAndCheckToday()
-    
-    if today == True and allLastFewHours == True:
-        time = "5Min"
-    elif today == False:
-        time = "1D"
-    elif today == True:
-        time = "1H"
-    
-    # just to make sure a time is entered
-    else: 
-        time = "1D"
-    
-    series = pd.DataFrame(lSentiment_vader, columns=['date', 'sentiment'])
-    series.date = pd.to_datetime(series.date, format='%Y-%m-%d %H:%M:%S', errors='ignore')
-    
-    # tell pandas that the date column is the one we use for indexing (or x-axis)
-    series.set_index('date', inplace=True)
-    
-
-    series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
-
-    # try:
-    #     newSeries = series.resample(time).sum()
-    # except:
-    #     pass
-    
-    newSeries = series.resample(time).sum()
-    graph_url = build_graph(newSeries)
-
-
-    if len(series) == 0:
-        Message = "No data collected, please try again later"
-    else: 
-        Message = " "
-
-     # LDA words
-
-    ldaModel, tfFeatureNames = LDA()
-
-    topics, words = display_topics(ldaModel, tfFeatureNames, 10)
-
-    TopicModel = list(zip(topics, words))
-
-
-     # LDA wordcloud
-
-    graph1, graph2, graph3, graph4 = displayWordcloud(ldaModel, tfFeatureNames)
-    
-    return render_template('result.html', Message = Message, graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, graph1 = graph1, graph2 = graph2, graph3 = graph3, TopicModel = TopicModel)
+    except ValueError: 
+        #Message = "No data collected, the servers may be overloaded with API requests, please try again later."
+        return render_template('error.html')
     #return render_template('topics.html', tokens = tokens)
 
 #TopicModel = TopicModel
@@ -561,4 +579,4 @@ def tokenize():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
