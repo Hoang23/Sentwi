@@ -3,8 +3,7 @@
 {% block body %}
     <div class = "Intro">
         <h1>Sentwi</h1> 
-        <h4>Ongoing Development</h4>
-        https://github.com/Hoang23/Sentwi
+        <p><a href="https://github.com/Hoang23/Sentwi">Follow the development here</a></p>
     </div>
     
     <br><br>
@@ -21,24 +20,66 @@
         Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so.
     </p>
     </div>
+
+    <style>
+        .btn {
+          border: none;
+          background-color: inherit;
+          padding: 14px 28px;
+          font-size: 16px;
+          cursor: pointer;
+          display: inline-block;
+        }
+        
+        .btn:hover {background: #eee;}
+        
+        .success {color: green;}
+        .info {color: dodgerblue;}
+        .warning {color: orange;}
+        .danger {color: red;}
+        .default {color: black;}
+        </style>
+
+ 
+
+
     
     <span>{{Message}}</span>
     <div class = "graph">
+            <form action="/buttonPress" method="POST">
+                <button class="btn info">Sentiment Analysis {{ButtonPressed}} </button>
+      
+            </form>
             <img src= '{{ graph }}' ></img>
     </div>
-    
-    <div class = "About">
-            <h3>About</h3>
-            Looking to get informed on the sentiment of a particular topic? <br>
-            Sentwi filters tweets by hashtags to computationally discover the trending sentiment of a topic using Natural Language Processing. <br>
-            It uses NLTK's VADER, a lexicon rule-based approach that takes in consideration both polarity/sentiment through positive and negative words and its strength. 
+
+
+    <div class = "Topics">
+        <form action="/buttonPress" method="POST">
+            <button class="btn info">Topic Modelling {{ButtonPressed}} </button>
+  
+        </form>
+
+        <img src= '{{ WordCloudURL }}' ></img>  
+        
     </div>
 
-    <br><br>
+
+    <br>
 
     <div>
 
-        Data
+        <b>Data</b> <br>
+
+        Topic Modelling
+
+        <p>
+                {% for i in  TopicModel %}
+                {{ i[0] }} {{i[1]}} <br>
+                {% endfor %}
+        </p>
+
+        Sentiment Analysis
         <table class="table">
         
             <thead>
