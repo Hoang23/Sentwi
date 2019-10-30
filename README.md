@@ -7,4 +7,4 @@ Flask web framework for serving the website with logic and views
 Example
 
 
-![SentimentAnalysisPic](hongkongprotestSentiment.png)
+![SentimentAnalysisPic](hongkongProtestSentimentAndTopic.png)
