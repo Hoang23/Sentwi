@@ -17,7 +17,7 @@
         </form>
     <br>
     <p> 
-        Please wait a minute for the sentiment analysis. It may take a while depending on the query. Try a different query if so.
+        Please wait a minute for the collection of data
     </p>
     </div>
 
@@ -46,19 +46,12 @@
     
     <span>{{Message}}</span>
     <div class = "graph">
-            <form action="/buttonPress" method="POST">
-                <button class="btn info">Sentiment Analysis {{ButtonPressed}} </button>
-      
-            </form>
+
             <img src= '{{ graph }}' ></img>
     </div>
 
 
     <div class = "Topics">
-        <form action="/buttonPress" method="POST">
-            <button class="btn info">Topic Modelling {{ButtonPressed}} </button>
-  
-        </form>
 
         <img src= '{{ WordCloudURL }}' ></img>  
         
