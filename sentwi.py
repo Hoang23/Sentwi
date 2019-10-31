@@ -47,6 +47,7 @@ import unicodedata
 import nltk 
 
 
+from urllib import request as req
 
 client = twitterClient.twitterClient()
 
@@ -60,21 +61,36 @@ def home():
 def topicModelling():
     return render_template('topics.html')
      
+@app.route('/Vader')
+def sentimentAnalysis():
+    return render_template('sentimentAnalysis.html')
+
+@app.route('/sentiment', methods=["GET", "POST"])
+def clickSentimentButton():
+    if request.method == "POST":
+        return render_template('sentimentAnalysis.html') 
+    # return redirect(url_for(sentimentAnalysis)) this isnt needed?
+
 @app.route('/buttonPress', methods=["GET", "POST"])
 def button():
     Button_Pressed = 0   
-    tokens = tokenize()
+    #tokens = tokenize()
 
     if request.method == "POST":
-        return render_template('topics.html', tokens = tokens)
+        return render_template('topics.html') # return render_template('topics.html', tokens = tokens) 
     return redirect(url_for(topicModelling))
     #return redirect(url_for('button')) # return url for the button function
     #return render_template('topics.html', tokens = tokens)
+
+# for some reason input isnt being calculated the second time
+#@app.route('/inputCalculation')
+
 
 
 def input():
     # request.args.get for get request
     # reqiest.form.get for post reqiest 
+    #if request.method == "POST":
     hashtag = request.form.get("hashtag")
     hashtag = str(hashtag)
 
@@ -88,7 +104,7 @@ def input():
 
     return hashtag
 
-
+#@app.route('/inputCalculation', methods=["GET", "POST"]) ### just added #used to be just 'get'
 def getTweets():
         # hashtag = request.form.get("hashtag")
         # hashtag = str(hashtag)
@@ -100,22 +116,25 @@ def getTweets():
         count = 0
         tweets = []
         hashtag = input()
+        print(f'hashtag is: {hashtag}')
         try:
             for idx, tweet in enumerate(tweepy.Cursor(client.search,q= hashtag ,count=100, lang="en").items()): # lang="en", since = week_ago).items()):
                 tweets.append(tweet)
                 count = count + 1
-                if count == 500:
+                if count == 401:
                     time.sleep(0.2)
                     count = 0
-                if idx > 2500: #2500 seems like a good number
+                if idx > 2500: #2500 seems like a good number, also 1600
                     break
+
+            print(len(tweets))
                 
             
         except:
             pass
         
         finally:
-          
+            print(f"Number of tweets collected is {len(tweets)}")
             return tweets
 
 # @app.route('/inputCalculation', methods=["GET", "POST"])
@@ -188,7 +207,7 @@ def vaderSentimentAnalysis(jsonTweets, bPrint, tweetProcessor):
     return lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output
 
 
-def stopwords():
+def getStopwordsVader():
     from nltk.corpus import stopwords # for some reason this doesnt work as a global import
     stop_words = set(stopwords.words('english'))
 
@@ -206,135 +225,86 @@ def stopwords():
     return stopwords
 
 
-def processAndVader():
-    tweetProcessor_vader = TwitterProcessing.TwitterProcessing(TweetTokenizer(), stopwords())
-    lSentiment_vader = []
-    lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = vaderSentimentAnalysis(getTweets(), False, tweetProcessor_vader)
-    return lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output
+# def processAndVader():
+#     stopwords = getStopwordsVader()
+#     tweets = getTweets()
+#     tweetProcessor_vader = TwitterProcessing.TwitterProcessing(TweetTokenizer(), stopwords)
+#     #lSentiment_vader = []
+#     lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = vaderSentimentAnalysis(tweets, True, tweetProcessor_vader)
+#     return lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output, tweets
 
 
-def runVaderAndCheckToday():
+# processing used in LDA?
+def process(text, tokeniser=TweetTokenizer(), stopwords=[]):
+    """
+    Perform the processing.  We used a a more simple version than week 4, but feel free to experiment.
+    @param text: the text (tweet) to process
+    @param tokeniser: tokeniser to use.
+    @param stopwords: list of stopwords to use.
+    @returns: list of (valid) tokens in text
+    """
+
+    text = text.lower()
+    tokens = tokeniser.tokenize(text)
+
+    return [tok for tok in tokens if tok not in stopwords and not tok.isdigit()]
+
+
+
+# def runVaderLDAAndCheckToday(tweets):
+#     from nltk.tokenize import TweetTokenizer 
+#     #stopwords = getStopwordsVader()
+#     #tweets = getTweets()
+#     #tweetTokenizer = TweetTokenizer()
+#     #punct = list(string.punctuation)
+#     #stopwordList = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"] + punct + ['rt', 'via', '...', 'https', 'co']
+#     #tweetProcessor_vader = TwitterProcessing.TwitterProcessing(TweetTokenizer(), stopwords)
+#     #lSentiment_vader = []
+#     #lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = vaderSentimentAnalysis(tweets, False, tweetProcessor_vader)
     
-    lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = processAndVader()
-
-    date_time = []
-    for i in lSentiment_vader:
-        date_time.append(i[0])
+#     #lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output, tweets = processAndVader()
 
 
-    import pytz
-    local = pytz.timezone ("Australia/Melbourne") # https://stackoverflow.com/questions/79797/how-to-convert-local-time-string-to-utc
+#     ################### LDA ################
+#     from nltk.corpus import stopwords #global imports arent working?
+#     from nltk.tokenize import TweetTokenizer # global imports arent working?
+#     # LDA parameters
+#     # number of topics to discover (default = 10)
+#     topicNum = 6 # default = 10
+#     # maximum number of words to display per topic (default = 10)
+#     # Answer to Exercise 1 (change from 10 to 15)
+#     wordNumToDisplay = 13 # default was 15
+#     # this is the number of features/words to used to describe our documents
+#     # please feel free to change to see effect
+#     featureNum = 300 # what is max_featureNum??
 
-    today = DT.datetime.today()
+#     punct = list(string.punctuation)
+#     #stop_words = set(stopwords.words('english'))
+#     #stopwordList = set(stopwords.words('english'))# + punct + ['rt', 'via', '...', 'https', 'co']
+#     stopwordList = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"] + punct + ['rt', 'via', '...', 'https', 'co']
+#     tweetTokenizer = TweetTokenizer()
 
-    today_naive = DT.datetime.strptime (str(today), "%Y-%m-%d %H:%M:%S.%f")
-    today_local_dt = local.localize(today_naive, is_dst=None)
-    today_utc_dt = today_local_dt.astimezone(pytz.utc)
+#     lTweets = []
+#     for tweet in tweets:
+#         lTokens = process(text=tweet.text, tokeniser=tweetTokenizer, stopwords=stopwordList)
+#         lTweets.append(' '.join(lTokens))
 
-    today = today_utc_dt.day
-    one_day = today_utc_dt - DT.timedelta(days=1)
-    one_day = one_day.day
-    two_day = today_utc_dt - DT.timedelta(days=2)
-    two_day = two_day.day
 
-    allTwoDays = []
-    for i in date_time:
-        day = i.day
-        if day == today:
-            allTwoDays.append(True)
-        elif day == one_day:
-            allTwoDays.append(True)
-        elif day == two_day:
-            allTwoDays.append(True)
-        elif day != today or one_day or two_day:
-            allTwoDays.append(False)
-            
-    dfallTwoDays = pd.DataFrame(allTwoDays) 
-   
-    for index, row in dfallTwoDays.iterrows():
-        if row[0] == False:
-            allTwoDays = False
-        else:
-            allTwoDays = True
+#     tfVectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=featureNum, stop_words= stopwordList) # 'english'
+#     tf = tfVectorizer.fit_transform(lTweets)
+#     # extract the names of the features (in our case, the words)
+#     tfFeatureNames = tfVectorizer.get_feature_names()
 
-    
-    # if all posts in the last 2 horurs
-    now = DT.datetime.today()
-    now_naive = DT.datetime.strptime (str(now), "%Y-%m-%d %H:%M:%S.%f")
-    now_local_dt = local.localize(now_naive, is_dst=None)
-    now_utc_dt = now_local_dt.astimezone(pytz.utc)
-
-    this_hour = now_utc_dt
-    this_hour = this_hour.hour
-
-    one_hour = now_utc_dt - DT.timedelta(hours=1)
-    one_hour = one_hour.hour
-
-    two_hour = now_utc_dt - DT.timedelta(hours=2)
-    two_hour = two_hour.hour
+#     # Run LDA (see documentation about what the arguments means)
+#     ldaModel = LatentDirichletAllocation(n_components =topicNum, max_iter=10, learning_method='online').fit(tf)
     
     
-    # tweets from last few horus
-    allLastFewHours = []
-    for i in date_time:
-        day = i.day
-        hour = i.hour
-        if hour == this_hour and day == today: 
-            allLastFewHours.append(True)
-        elif hour == one_hour and day == today: 
-            allLastFewHours.append(True)
-        elif hour == two_hour and day == today:
-            allLastFewHours.append(True)
-        else:
-            allLastFewHours.append(False)
-        
-    dfAllLastFewHours = pd.DataFrame(allLastFewHours) 
+#     return ldaModel, tfFeatureNames
 
-    for index, row in dfAllLastFewHours.iterrows():
-        if row[0] == False:
-            allLastFewHours = False
-            break
-        else:
-            allLastFewHours = True
-    
-
-    return allTwoDays, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output
-        
-def LDA():
-    from nltk.corpus import stopwords #global imports arent working?
-    from nltk.tokenize import TweetTokenizer # global imports arent working?
-    # LDA parameters
-    # number of topics to discover (default = 10)
-    topicNum = 6 # default = 10
-    # maximum number of words to display per topic (default = 10)
-    # Answer to Exercise 1 (change from 10 to 15)
-    wordNumToDisplay = 15 # default was 15
-    # this is the number of features/words to used to describe our documents
-    # please feel free to change to see effect
-    featureNum = 200 # what is max_featureNum??
-
-    punct = list(string.punctuation)
-    #stop_words = set(stopwords.words('english'))
-    #stopwordList = set(stopwords.words('english'))# + punct + ['rt', 'via', '...', 'https', 'co']
-    stopwordList = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"] + punct + ['rt', 'via', '...', 'https', 'co']
-    tweetTokenizer = TweetTokenizer()
-
-    tweets = getTweets()
-
-    lTweets = []
-    for tweet in tweets:
-        lTokens = process(text=tweet.text, tokeniser=tweetTokenizer, stopwords=stopwordList)
-        lTweets.append(' '.join(lTokens))
+#     #return ldaModel, tfFeatureNames
+#     #return allTwoDays, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output
 
 
-    tfVectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=featureNum, stop_words= stopwordList) # 'english'
-    tf = tfVectorizer.fit_transform(lTweets)
-    # extract the names of the features (in our case, the words)
-    tfFeatureNames = tfVectorizer.get_feature_names()
-
-    # Run LDA (see documentation about what the arguments means)
-    ldaModel = LatentDirichletAllocation(n_components =topicNum, max_iter=10, learning_method='online').fit(tf)
-    return ldaModel, tfFeatureNames
 
 
 def display_topics(model, featureNames, numTopWords):
@@ -382,12 +352,10 @@ def displayWordcloud(model, featureNames):
 
 
 
-    wordcloud_URLs = []
     wordcloudURL = ""
-    img = io.BytesIO()
     i = 1
-
-    # only the last graph beccause plt.close() is off
+    img = io.BytesIO()
+    # only the last graph in the loop beccause plt.close() is off
     for topicId, lTopicDist in enumerate(normalisedComponents):
         lWordProb = {featureNames[i] : wordProb for i,wordProb in enumerate(lTopicDist)}
         wordcloud = WordCloud(background_color='black')
@@ -399,7 +367,7 @@ def displayWordcloud(model, featureNames):
     #cloud = WordCloud().generate(text)
     
         #plt.savefig('image'+ str(i) +'.png')
-
+       
         img = io.BytesIO()
         plt.savefig(img, format='png') #png
         img.seek(0)
@@ -423,160 +391,394 @@ def displayWordcloud(model, featureNames):
 
 
 # very good tutorial https://technovechno.com/creating-graphs-in-python-using-matplotlib-flask-framework-pythonanywhere/
-def build_graph(seriesName):
+#@app.route('/inputCalculation', methods=["GET, POST"]) ### just added # changed get to post
 
-    img = io.BytesIO()
-    #plt.plot(seriesName)
-    # https://stackoverflow.com/questions/31345489/pyplot-change-color-of-line-if-data-is-less-than-zero
-    pos_series = seriesName.copy()
-    neg_series = seriesName.copy()
+# def build_graph(seriesName):
+#     img = io.BytesIO()
+#     #plt.plot(seriesName)
+#     # https://stackoverflow.com/questions/31345489/pyplot-change-color-of-line-if-data-is-less-than-zero
 
-    pos_series[pos_series <= 0] = np.nan # pos_series[pos_series <= 0] = np.nan
-    neg_series[neg_series > 0] = np.nan
+#     pos_series = seriesName.copy()
+#     neg_series = seriesName.copy()
 
-    #plt.style.use('fivethirtyeight')
-    plt.plot(pos_series, color='b')
-    plt.plot(neg_series, color='r')
+#     pos_series[pos_series <= 0] = np.nan # pos_series[pos_series <= 0] = np.nan
+#     neg_series[neg_series > 0] = np.nan
 
-    plt.xticks(rotation=10) #90
-    plt.suptitle('Sentiment Analysis of ' + str(input()))
-    plt.ylabel('Sentiment - Negative < 0 > Positive')
-    #plt.xlabel('Date Time')
-    # xlabel doesnt work for some reason
-    plt.savefig(img, format='png')
-    img.seek(0)
-    graph_url = base64.b64encode(img.getvalue()).decode()    
-    plt.close()
+#     #plt.style.use('fivethirtyeight')
+#     plt.plot(pos_series, color='b')
+#     plt.plot(neg_series, color='r')
+
+#     plt.xticks(rotation=20) #90
+#     # plt.suptitle('Sentiment Analysis of ' + str(input()))
+#     plt.suptitle('Sentiment Analysis')
+#     plt.ylabel('Sentiment - Negative < 0 > Positive')
+#     #plt.xlabel('Date Time')
+#     # xlabel doesnt work for some reason
+#     plt.savefig(img, format='png')
+#     img.seek(0)
+#     graph_url = base64.b64encode(img.read()).decode('ascii') # both ways work
+#     #graph_url = base64.b64encode(img.getvalue()).decode()  # both ways work
+
+#     plt.close()
 
 
 
-    return 'data:image/png;base64,{}'.format(graph_url)
+#     return 'data:image/png;base64,{}'.format(graph_url)
 
 
-@app.route('/inputCalculation', methods=["POST"]) # tihs belongs here
+@app.route('/inputCalculation', methods=["POST"]) # tihs belongs here (might need to add get?)
 def create_figure():
-    import datetime as DT 
-    try:
+    if request.method == "POST":
+        
+        ### new ###
+        from nltk.tokenize import TweetTokenizer
+        input()
+        tweets = getTweets()
+
+
+
+
+        stopwords = getStopwordsVader()
+        tweetTokenizer = TweetTokenizer()
+
+
+        tweetProcessor_vader = TwitterProcessing.TwitterProcessing(tweetTokenizer, stopwords)
+        lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = vaderSentimentAnalysis(tweets, False, tweetProcessor_vader )
+
+
+        date_time = []
+
+        
+        for i in lSentiment_vader:
+            date_time.append(i[0])
+
+        # find time of tweets
+        import pytz
+        import datetime as DT
+        local = pytz.timezone ("Australia/Melbourne") # https://stackoverflow.com/questions/79797/how-to-convert-local-time-string-to-utc
+
+        today = DT.datetime.today()
+
+        today_naive = DT.datetime.strptime (str(today), "%Y-%m-%d %H:%M:%S.%f")
+        today_local_dt = local.localize(today_naive, is_dst=None)
+        today_utc_dt = today_local_dt.astimezone(pytz.utc)
+
+        today = today_utc_dt.day
+        one_day = today_utc_dt - DT.timedelta(days=1)
+        one_day = one_day.day
+        two_day = today_utc_dt - DT.timedelta(days=2)
+        two_day = two_day.day
+
+        allTwoDays = []
+        for i in date_time:
+            day = i.day
+            if day == today:
+                allTwoDays.append(True)
+            elif day == one_day:
+                allTwoDays.append(True)
+            elif day == two_day:
+                allTwoDays.append(True)
+            elif day != today or one_day or two_day:
+                allTwoDays.append(False)
+            else:
+                allTwoDays.append(False)
+                
+        dfallTwoDays = pd.DataFrame(allTwoDays) 
+    
+        for index, row in dfallTwoDays.iterrows():
+            if row[0] == False:
+                allTwoDays = False
+            else:
+                allTwoDays = True
+
+        
+        # if all posts in the last 2 horurs
+        now = DT.datetime.today()
+        now_naive = DT.datetime.strptime (str(now), "%Y-%m-%d %H:%M:%S.%f")
+        now_local_dt = local.localize(now_naive, is_dst=None)
+        now_utc_dt = now_local_dt.astimezone(pytz.utc)
+
+        this_hour = now_utc_dt
+        this_hour = this_hour.hour
+
+        one_hour = now_utc_dt - DT.timedelta(hours=1)
+        one_hour = one_hour.hour
+
+        two_hour = now_utc_dt - DT.timedelta(hours=2)
+        two_hour = two_hour.hour
+        
+        
+        # tweets from last few horus
+        allLastFewHours = []
+        for i in date_time:
+            day = i.day
+            hour = i.hour
+            if hour == this_hour and day == today: 
+                allLastFewHours.append(True)
+            elif hour == one_hour and day == today: 
+                allLastFewHours.append(True)
+            elif hour == two_hour and day == today:
+                allLastFewHours.append(True)
+            else:
+                allLastFewHours.append(False)
+            
+        dfAllLastFewHours = pd.DataFrame(allLastFewHours) 
+
+        for index, row in dfAllLastFewHours.iterrows():
+            if row[0] == False:
+                allLastFewHours = False
+                break
+            else:
+                allLastFewHours = True
+
+        # parameter for 'time'
+        import datetime as DT 
+        
         register_matplotlib_converters()
         
-        today, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = runVaderAndCheckToday()
         
-        if today == True and allLastFewHours == True:
+        if allTwoDays == True and allLastFewHours == True:
             time = "5Min"
-        elif today == False:
+        elif allTwoDays == False:
             time = "1D"
-        elif today == True:
+        elif allTwoDays == True:
             time = "1H"
-        
         # just to make sure a time is entered
         else: 
             time = "1D"
-        
+
+
+        # create series for plotting
         series = pd.DataFrame(lSentiment_vader, columns=['date', 'sentiment'])
-        series.date = pd.to_datetime(series.date, format='%Y-%m-%d %H:%M:%S', errors='ignore')
-        
+        series.date = pd.to_datetime(series.date, format='%Y-%m-%d %H:%M:%S', errors='ignore')#, errors='ignore')
+
         # tell pandas that the date column is the one we use for indexing (or x-axis)
         series.set_index('date', inplace=True)
-        
-
         series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
 
-        # try:
-        #     newSeries = series.resample(time).sum()
-        # except:
-        #     pass
-        
         newSeries = series.resample(time).sum()
-        graph_url = build_graph(newSeries)
 
 
-        if len(series) == 0:
-            Message = "No data collected, please try again later"
-        else: 
-            Message = " "
 
-        # LDA words
 
-        ldaModel, tfFeatureNames = LDA()
 
-        topics, words = display_topics(ldaModel, tfFeatureNames, 10)
 
+        seriesName = newSeries
+        plt.clf() # clear the entire current figure
+        img = io.BytesIO()
+        #plt.plot(seriesName)
+        # https://stackoverflow.com/questions/31345489/pyplot-change-color-of-line-if-data-is-less-than-zero
+
+        pos_series = seriesName.copy()
+        neg_series = seriesName.copy()
+
+        pos_series[pos_series <= 0] = np.nan # pos_series[pos_series <= 0] = np.nan
+        neg_series[neg_series > 0] = np.nan
+
+        #plt.style.use('fivethirtyeight')
+        plt.plot(pos_series, color='b')
+        plt.plot(neg_series, color='r')
+
+        plt.xticks(rotation=20) #90
+        plt.suptitle('Sentiment Analysis of ' + str(input()))
+        #plt.suptitle('Sentiment Analysis')
+        plt.ylabel('Sentiment - Negative < 0 > Positive')
+        #plt.xlabel('Date Time')
+        # xlabel doesnt work for some reason
+        plt.savefig(img, format='png')
+        img.seek(0)
+        graph_url = base64.b64encode(img.read()).decode('ascii') # both ways work
+        #graph_url = base64.b64encode(img.getvalue()).decode()  # both ways work
+
+        #plt.close() # shuts the window
+        
+        #graph_url = build_graph(newSeries)
+        graph_url = 'data:image/png;base64,{}'.format(graph_url)
+
+        ### LDA ###
+        ################### LDA ################
+        from nltk.corpus import stopwords #global imports arent working?
+        from nltk.tokenize import TweetTokenizer # global imports arent working?
+        # LDA parameters
+        # number of topics to discover (default = 10)
+        topicNum = 6 # default = 10
+        # maximum number of words to display per topic (default = 10)
+        # Answer to Exercise 1 (change from 10 to 15)
+        wordNumToDisplay = 13 # default was 15
+        # this is the number of features/words to used to describe our documents
+        # please feel free to change to see effect
+        featureNum = 300 # what is max_featureNum??
+
+        punct = list(string.punctuation)
+        #stop_words = set(stopwords.words('english'))
+        #stopwordList = set(stopwords.words('english'))# + punct + ['rt', 'via', '...', 'https', 'co']
+        stopwordList = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"] + punct + ['rt', 'via', '...', 'https', 'co']
+        tweetTokenizer = TweetTokenizer()
+
+        lTweets = []
+        for tweet in tweets:
+            lTokens = process(text=tweet.text, tokeniser=tweetTokenizer, stopwords=stopwordList)
+            lTweets.append(' '.join(lTokens))
+
+
+        tfVectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=featureNum, stop_words= stopwordList) # 'english'
+        tf = tfVectorizer.fit_transform(lTweets)
+        # extract the names of the features (in our case, the words)
+        tfFeatureNames = tfVectorizer.get_feature_names()
+
+        # Run LDA (see documentation about what the arguments means)
+        ldaModel = LatentDirichletAllocation(n_components =topicNum, max_iter=10, learning_method='online').fit(tf)
+
+
+
+
+        topics, words = display_topics(ldaModel, tfFeatureNames, 15)
         TopicModel = list(zip(topics, words))
-
 
         # LDA wordcloud
 
         # graph1, graph2, graph3, graph4 = displayWordcloud(ldaModel, tfFeatureNames)
         WordCloudURL = displayWordcloud(ldaModel, tfFeatureNames)
 
-        return render_template('result.html', Message = Message, graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
+        return render_template('result.html', graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
+
+
+
+
+
+
+
+
+
+
+        # import datetime as DT 
+        
+        # register_matplotlib_converters()
+        
+        # ldaModel, tfFeatureNames, today, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = runVaderLDAAndCheckToday()
+        
+        # if today == True and allLastFewHours == True:
+        #     time = "5Min"
+        # elif today == False:
+        #     time = "1D"
+        # elif today == True:
+        #     time = "1H"
+        
+        # # just to make sure a time is entered
+        # else: 
+        #     time = "1D"
+        
+        # series = pd.DataFrame(lSentiment_vader, columns=['date', 'sentiment'])
+
+        # print("series before")
+        # print(series)
+        # series.date = pd.to_datetime(series.date, format='%Y-%m-%d %H:%M:%S', errors='ignore')#, errors='ignore')
+        # # print("series after")
+        # # print(series)
+
+
+
+        
+        # # tell pandas that the date column is the one we use for indexing (or x-axis)
+        # series.set_index('date', inplace=True)
+        # series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
+
+        # # try:
+        # #     newSeries = series.resample(time).sum()
+        # # except:
+        # #     pass
+        
+        # newSeries = series.resample(time).sum()
+
+        # print(f"newSeries is {newSeries}")
+        # graph_url = build_graph(newSeries)
+
+
     
-    except ValueError: 
-        #Message = "No data collected, the servers may be overloaded with API requests, please try again later."
-        return render_template('error.html')
-    #return render_template('topics.html', tokens = tokens)
 
-#TopicModel = TopicModel
+        # # LDA words
 
-# def getTextTweets():
+        # #ldaModel, tfFeatureNames = LDA()
 
-#     tweets = getTweets()
-#     text = []
-#     for tweet in tweets:
-#         text.append(tweet)
-#     return text
+        # topics, words = display_topics(ldaModel, tfFeatureNames, 15)
+
+        # TopicModel = list(zip(topics, words))
 
 
-def process(text, tokeniser=TweetTokenizer(), stopwords=[]):
-    """
-    Perform the processing.  We used a a more simple version than week 4, but feel free to experiment.
+        # # LDA wordcloud
 
-    @param text: the text (tweet) to process
-    @param tokeniser: tokeniser to use.
-    @param stopwords: list of stopwords to use.
+        # # graph1, graph2, graph3, graph4 = displayWordcloud(ldaModel, tfFeatureNames)
+        # WordCloudURL = displayWordcloud(ldaModel, tfFeatureNames)
 
-    @returns: list of (valid) tokens in text
-    """
+        # return render_template('result.html', graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
+        
+        # except ValueError:
+        #     import datetime as DT 
+            
+        #     register_matplotlib_converters()
+            
+        #     ldaModel, tfFeatureNames, today, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = runVaderLDAAndCheckToday()
+            
+        #     if today == True and allLastFewHours == True:
+        #         time = "5Min"
+        #     elif today == False:
+        #         time = "1D"
+        #     elif today == True:
+        #         time = "1H"
+            
+        #     # just to make sure a time is entered
+        #     else: 
+        #         time = "1D"
+            
+        #     series = pd.DataFrame(lSentiment_vader, columns=['date', 'sentiment']) 
+        #     #series.date = pd.to_datetime(series.date, format='%Y-%m-%d', errors='ignore')
+        
+            
+        #     # tell pandas that the date column is the one we use for indexing (or x-axis)
+        #     series.set_index('date', inplace=True)
+            
 
-    text = text.lower()
-    tokens = tokeniser.tokenize(text)
+        #     series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
 
-    return [tok for tok in tokens if tok not in stopwords and not tok.isdigit()]
+        #     # try:
+        #     #     newSeries = series.resample(time).sum()
+        #     # except:
+        #     #     pass
+            
+        #     newSeries = series.resample(time).sum()
+        #     graph_url = build_graph(newSeries)
 
 
+        #     if len(series) == 0:
+        #         Message = "No data collected, please try again later"
+        #     else: 
+        #         Message = " "
 
-def tokenize():
-    """
-    Performs topic modelling on tweets.
-    """
-    from nltk.corpus import stopwords
+        #     # LDA words
+
+        #     #ldaModel, tfFeatureNames = LDA()
+
+        #     topics, words = display_topics(ldaModel, tfFeatureNames, 15)
+
+        #     TopicModel = list(zip(topics, words))
+
+
+        #     # LDA wordcloud
+
+        #     # graph1, graph2, graph3, graph4 = displayWordcloud(ldaModel, tfFeatureNames)
+        #     WordCloudURL = displayWordcloud(ldaModel, tfFeatureNames)
+
+        #     #return render_template('result.html', graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
+
+        # finally:
+        #     return render_template('result.html', graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
+        # # except ValueError: 
+        # #     return render_template('error.html')
     
-    # use built-in nltk tweet tokenizer
-    # there is definitely scope to improve this
-    tweetTokenizer = TweetTokenizer()
-    punct = list(string.punctuation)
 
-    # nltk english stopwords https://gist.github.com/sebleier/554280
-    stopwordList = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"] + punct + ['rt', 'via', '...', 'https', 'co']
-
-
-
-    # this will store the list of tweets we read from timeline
-    #hashtag = input()
-
-
-
-    tweets = getTweets()
-
-    lTweets = []
-    for tweet in tweets:
-        lTokens = process(text=tweet.text, tokeniser=tweetTokenizer, stopwords=stopwordList)
-        lTweets.append(' '.join(lTokens))
-
-    print(lTweets)
-    return lTweets
-
+### errors
+# matplotlib troubleshooting https://stackoverflow.com/questions/8213522/when-to-use-cla-clf-or-close-for-clearing-a-plot-in-matplotlib
 
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
