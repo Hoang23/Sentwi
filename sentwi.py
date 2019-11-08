@@ -1,4 +1,6 @@
 from flask import Flask, request, redirect, render_template, send_file, url_for, jsonify, Response
+from flask_sqlalchemy import SQLAlchemy
+
 import subprocess # show commandline output 
 #from flask import jsonify # takes any data structure in python and converts it to valid json
 
@@ -47,8 +49,6 @@ import unicodedata
 import nltk 
 
 
-
-
 client = twitterClient.twitterClient()
 
 app = Flask(__name__)
@@ -74,7 +74,7 @@ def clickSentimentButton():
 
 @app.route('/buttonPress', methods=["GET", "POST"])
 def button():
-    Button_Pressed = 0   
+    Button_Pressed = 0 # unused
     #tokens = tokenize()
 
     if request.method == "POST":
@@ -84,20 +84,12 @@ def button():
     #return render_template('topics.html', tokens = tokens)
 
 
-
-
-
-
-# for some reason input isnt being calculated the second time
-#@app.route('/inputCalculation')
 def input():
     # request.args.get for get request
     # reqiest.form.get for post reqiest 
     #if request.method == "POST":
     hashtag = request.form.get("hashtag")
     hashtag = str(hashtag)
-
-    
 
     checkStartWithHash = hashtag.startswith('#')
     if checkStartWithHash == True:
@@ -109,9 +101,6 @@ def input():
 
 #@app.route('/inputCalculation', methods=["GET", "POST"]) ### just added #used to be just 'get'
 def getTweets():
-        # hashtag = request.form.get("hashtag")
-        # hashtag = str(hashtag)
-
         today = DT.date.today()
         week_ago = today - DT.timedelta(days=7)
         #month_ago = today - DT.timedelta(days=30)
@@ -140,20 +129,6 @@ def getTweets():
             print(f"Number of tweets collected is {len(tweets)}")
             return tweets
 
-# @app.route('/inputCalculation', methods=["GET", "POST"])
-# def dumpDictJSON():
-#     '''
-#     Write to result.json. 'w' instead of 'a' because we are dumping all the tweets and not appending in a for loop. 
-#     '''
-
-
-#     tweets = getTweets()
-#     tweets = dict(tweets)
-#     if request.method == "POST":
-#         with open('tweets.json', 'w') as fp:
-#             json.dump(tweets, fp)
-
-    
 
 def vaderSentimentAnalysis(jsonTweets, bPrint, tweetProcessor):
     """
@@ -255,15 +230,10 @@ def process(text, tokeniser=TweetTokenizer(), stopwords=[]):
 
 
 def runVaderLDAAndCheckToday():
+    """
+    Runs Vader and LDA algorithm and check the time span of all the tweets
+    """
     from nltk.tokenize import TweetTokenizer 
-    #stopwords = getStopwordsVader()
-    #tweets = getTweets()
-    #tweetTokenizer = TweetTokenizer()
-    #punct = list(string.punctuation)
-    #stopwordList = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"] + punct + ['rt', 'via', '...', 'https', 'co']
-    #tweetProcessor_vader = TwitterProcessing.TwitterProcessing(TweetTokenizer(), stopwords)
-    #lSentiment_vader = []
-    #lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = vaderSentimentAnalysis(tweets, False, tweetProcessor_vader)
     
     lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output, tweets = processAndVader()
 
@@ -361,7 +331,7 @@ def runVaderLDAAndCheckToday():
     wordNumToDisplay = 13 # default was 15
     # this is the number of features/words to used to describe our documents
     # please feel free to change to see effect
-    featureNum = 300 # what is max_featureNum??
+    featureNum = 300 # 300 words for features
 
     punct = list(string.punctuation)
     #stop_words = set(stopwords.words('english'))
@@ -423,20 +393,11 @@ def displayWordcloud(model, featureNames):
     # this normalises each row/topic to sum to one
     # use this normalisedComponents to display your wordclouds
     normalisedComponents = model.components_ / model.components_.sum(axis=1)[:, np.newaxis]
-
-    # TODO: complete the implementation
-    
-    #
-    # Answer to Exercises 3 and 4
-    #
-    
     topicNum = len(model.components_)
     # number of wordclouds for each row
     plotColNum = 3
     # number of wordclouds for each column
     plotRowNum = int(math.ceil(topicNum / plotColNum))
-
-
 
     wordcloudURL = ""
     i = 1
@@ -452,29 +413,15 @@ def displayWordcloud(model, featureNames):
         plt.title('Topic %d:' % (topicId+1))
         plt.imshow(wordcloud, interpolation='bilinear')
         plt.axis("off")
-    #cloud = WordCloud().generate(text)
-    
-        #plt.savefig('image'+ str(i) +'.png')
 
         img = io.BytesIO()
         plt.savefig(img, format='png') #png
         img.seek(0)
-        # wordcloud_URLs.append(base64.b64encode(img.getvalue()).decode())    
-        #wordcloud_URLs.append(base64.b64encode(img.getvalue()).decode())
-        #wordcloud_URLs.append(base64.b64encode(img.read()).decode('ascii'))
         imgURL = base64.b64encode(img.read()).decode('ascii')
         wordcloudURL = 'data:img/png;base64,{}'.format(imgURL)
         #plt.close()
         i = i + 1
-#
 
-    # graph1 = 'data:image/png;base64,' + wordcloud_URLs[0]
-    # graph2 = 'data:image/png;base64,' + wordcloud_URLs[1]
-    # graph3 = 'data:image/png;base64,' + wordcloud_URLs[2]
-    # graph4 = 'data:image/png;base64,' + wordcloud_URLs[3]
-    
-
-    # return graph1, graph2, graph3, graph4
     return wordcloudURL
 
 
@@ -539,115 +486,27 @@ def create_figure():
                 time = "6H"
             
             series = pd.DataFrame(lSentiment_vader, columns=['date', 'sentiment'])
-
-            #print("series before")
-            #print(series)
             series.date = pd.to_datetime(series.date, format='%Y-%m-%d %H:%M:%S', errors='ignore')#, errors='ignore')
-            # print("series after")
-            # print(series)
-
-
-
             
             # tell pandas that the date column is the one we use for indexing (or x-axis)
             series.set_index('date', inplace=True)
             series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
-
-            # try:
-            #     newSeries = series.resample(time).sum()
-            # except:
-            #     pass
-            
+ 
             newSeries = series.resample(time).sum()
-
-            #print(f"newSeries is {newSeries}")
             graph_url = build_graph(newSeries)
 
-
-        
-
             # LDA words
-
-            #ldaModel, tfFeatureNames = LDA()
-
             topics, words = display_topics(ldaModel, tfFeatureNames, 15)
-
             TopicModel = list(zip(topics, words))
 
-
             # LDA wordcloud
-
-            # graph1, graph2, graph3, graph4 = displayWordcloud(ldaModel, tfFeatureNames)
             WordCloudURL = displayWordcloud(ldaModel, tfFeatureNames)
 
             return render_template('result.html', graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
-            
-        # except ValueError:
-        #     import datetime as DT 
-            
-        #     register_matplotlib_converters()
-            
-        #     ldaModel, tfFeatureNames, today, allLastFewHours, lSentiment_vader, tokensl, dSentimentScoresl, tweetURLs, output = runVaderLDAAndCheckToday()
-            
-        #     if today == True and allLastFewHours == True:
-        #         time = "5Min"
-        #     elif today == False:
-        #         time = "1D"
-        #     elif today == True:
-        #         time = "1H"
-            
-        #     # just to make sure a time is entered
-        #     else: 
-        #         time = "1D"
-            
-        #     series = pd.DataFrame(lSentiment_vader, columns=['date', 'sentiment']) 
-        #     #series.date = pd.to_datetime(series.date, format='%Y-%m-%d', errors='ignore')
-        
-            
-        #     # tell pandas that the date column is the one we use for indexing (or x-axis)
-        #     series.set_index('date', inplace=True)
-            
-
-        #     series[['sentiment']] = series[['sentiment']].apply(pd.to_numeric)
-
-        #     # try:
-        #     #     newSeries = series.resample(time).sum()
-        #     # except:
-        #     #     pass
-            
-        #     newSeries = series.resample(time).sum()
-        #     graph_url = build_graph(newSeries)
-
-
-        #     if len(series) == 0:
-        #         Message = "No data collected, please try again later"
-        #     else: 
-        #         Message = " "
-
-        #     # LDA words
-
-        #     #ldaModel, tfFeatureNames = LDA()
-
-        #     topics, words = display_topics(ldaModel, tfFeatureNames, 15)
-
-        #     TopicModel = list(zip(topics, words))
-
-
-        #     # LDA wordcloud
-
-        #     # graph1, graph2, graph3, graph4 = displayWordcloud(ldaModel, tfFeatureNames)
-        #     WordCloudURL = displayWordcloud(ldaModel, tfFeatureNames)
-
-        #     #return render_template('result.html', graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
-
-        # finally:
-        #     return render_template('result.html', graph = graph_url, tokensl = tokensl, dSentimentScoresl = dSentimentScoresl, tweetURLs = tweetURLs, output = output, WordCloudURL = WordCloudURL, TopicModel = TopicModel)
+     
         except ValueError: 
             return render_template('error.html')
     
-
-
-
 
 if __name__ == '__main__':
     app.run(debug=False)
